@@ -9,85 +9,116 @@ public class VfsMountTable
   private static boolean debug = false;
   private java.util.logging.Logger log;
   private java.util.HashMap mountTable;
-  
+  private MountPoint rootMP = null;
+  private Ps2Vfs     vfs = null;
+
   VfsMountTable() {
-    mountTable = new java.util.HashMap();
+    mountTable = new java.util.HashMap(); 
+    rootMP = new MountPoint("/");
     log = java.util.logging.Logger.getLogger("ps2vfs");
+    vfs = Ps2Vfs.getVfs();
   }
 
-  public java.util.Iterator getIterator() {
-    return mountTable.entrySet().iterator();
+  public MountTableIterator iterator() {
+    return new MountTableIterator(mountTable.entrySet().iterator());
   }
 
+  String NormalizePathSep(String path) {
+    return path.replaceAll("\\\\", "/");
+  }
+  
   public boolean addMountPoint(String virtualPath, String actualPath, 
-			       boolean explodeContent, boolean recursive, boolean hidden) {
-    java.util.List mounted = null;
+			       boolean addPathNameToVirtual, boolean recursive, 
+			       boolean hidden) 
+  {
+    virtualPath = NormalizePathSep(virtualPath);
+    actualPath = NormalizePathSep(actualPath);
 
-    mounted = addMountPath(virtualPath);
-    mounted.add(new MountPoint(actualPath, explodeContent, recursive, hidden));
-    log.config("Mounting: " + virtualPath + " => " + actualPath + " " + 
-	       (recursive?"r":"-") + (explodeContent?"e":"-") + (hidden?"h":"-"));
+    if(addPathNameToVirtual) {
+      // Get name of dir and add it as a virtul MP dir element.
+      java.io.File filePath = new java.io.File(actualPath);
+      String fileName = filePath.getName();
+      virtualPath += virtualPath.endsWith("/") ? "" : "/"  + fileName;
+    }
+
+    if(debug) {
+      System.err.println("addMountPoint: " + virtualPath);
+    }
+
+    int schemeIdx = actualPath.indexOf("://");
+    if(schemeIdx > 0 ) {
+      String scheme = actualPath.substring(0, schemeIdx);
+      int pathIdx = actualPath.indexOf("/", schemeIdx + 3);
+      String host = null;
+      String path = null;
+
+      if(pathIdx > 0) {
+	host = actualPath.substring(schemeIdx + 3, pathIdx);
+	path = actualPath.substring(pathIdx);
+      }
+      // System.out.println("Adding URI: " + scheme + "://" + host + path);
+      try {
+	java.net.URI uri = new java.net.URI(actualPath);
+      } catch(Exception e) {
+	// Malformed URI. Try to fix.
+	try {
+	  java.net.URI uri = new java.net.URI(scheme, host, path, null, null);
+	  actualPath = uri.toString();
+	} catch(Exception ee) {
+	  log.warning("Failed to convert to URI: " + actualPath + "(" + ee + ")");
+	}
+      }
+    }
+
+    String[] pathElements = virtualPath.split("/+");
+    //    System.out.println("pe (" + pathElements.length + "): ");
+    
+    MountPoint curMP = rootMP;
+    for(int n = 0; n < pathElements.length; n++) {
+      if(debug)
+	System.out.println(pathElements[n]);
+      if(pathElements[n] == null || pathElements[n].length() == 0)
+        continue;
+      curMP = curMP.addChild(new MountPoint(pathElements[n]));
+    }
+    mountTable.put(virtualPath, curMP);
+    
+    curMP.addChild(new MountPoint(actualPath, recursive, hidden));
+    if(vfs == null) 
+      vfs = Ps2Vfs.getVfs();
+    if(vfs != null)
+      vfs.clearCache();
     return true;
   }
 
   public boolean removeMountPoint(String virtualPath, String actualPath, 
-				  boolean explodeContent, boolean recursive, boolean hidden) {
-    
-    java.util.List mounted = (java.util.List) mountTable.get(virtualPath);
+				  boolean recursive, boolean hidden) {
+
     boolean removed = false;
-    if(mounted != null) {
-      removed = mounted.remove(new MountPoint(actualPath, explodeContent, 
-					      recursive, hidden));
-    } 
-    if(removed) {
-      log.config("Unmounting: " + virtualPath + " => " + actualPath + " " + 
-		 (recursive?"r":"-") + (explodeContent?"e":"-") + (hidden?"h":"-"));
-      removeMountPath(virtualPath, null);
+
+    if(debug) {
+      System.err.println("removeMountPoint("+virtualPath+")");
     }
+    
+    MountPoint curMP = (MountPoint) mountTable.get(virtualPath);
+    if(curMP != null) {
+      curMP.removeChild(new MountPoint(actualPath, 
+				       recursive, hidden));
+      if(vfs == null) 
+	vfs = Ps2Vfs.getVfs();
+      if(vfs != null)
+	vfs.clearCache();
+      removed = true;
+    }
+
+    if(!removed)
+      System.err.println("Failed to remove: " + virtualPath);
     return removed;
   }
   
-  public ps2vfs.plugin.VfsDir getVirtualDirContent(String path) {
-    int curLevel;
-    String virtualPath = "/";
-    ps2vfs.plugin.VfsDir dirContent = null;
-    java.util.List mounted = null;
-    String name = "";
-    
-    for(curLevel = path.indexOf('/'); 
-	path.length() > 0; curLevel = path.indexOf('/')) {
-      if(curLevel == 0) {
-	path = path.substring(1);
-	continue;
-      }
-      String oldPath = path;
-      if(curLevel > 0) {
-	name = path.substring(0, curLevel);
-	path = path.substring(curLevel + 1);
-      } else {
-	name = path;
-	path = "";
-      }
-      
-      // Add name to current path.
-      String nvp = virtualPath + name + "/";
-      mounted = (java.util.List) mountTable.get(nvp);
-      if(mounted == null) {
-	path = oldPath;
-	break;
-      }
-      virtualPath = nvp;
-    }
-
-    mounted = (java.util.List) mountTable.get(virtualPath);
-    if(mounted != null) {
-      if(debug) {
-	System.out.println("Found valid virtual path '" + 
-			   virtualPath + "'" + " remain " +  path);
-      }
-      dirContent = selectMountPoint(virtualPath, path, mounted);
-    }
-    return dirContent;
+  public ps2vfs.plugin.VfsDir getRootContent() {
+    java.util.List dirContent = rootMP.resolveDir();
+    return new ps2vfs.plugin.VfsDir("/", dirContent);
   }
 
   public void print() {
@@ -97,174 +128,39 @@ public class VfsMountTable
     }
   }
 
+  public String[] getChildren(String path) 
+  {
+    java.util.List mounted = null;
+    String[] pathElements = path.split("/+");
+    MountPoint curMnt = rootMP;
 
-  private ps2vfs.plugin.VfsDir selectMountPoint(String virtualPath, 
-						String path, 
-						java.util.List mounted) {
-    VfsResolvedDir rootDirContent = null;
-    if(debug) {
-      System.out.println("Selecting: '" + path + "' in " + mounted + 
-			 " (list of " + virtualPath + ")");
-    }
+    boolean pathNotFound = false;
+    if(debug) 
+      System.err.println("getChildren1: " + path);
     
-    for(java.util.ListIterator li = mounted.listIterator(); 
-	li.hasNext();) {
-      MountPoint mp = (MountPoint) li.next();
-      VfsResolvedDir dirContent = mp.resolveDir(path);
-      if(dirContent != null) {
-	if(dirContent.isRootDir()) {
-	  // Append this root content to the rest.
-	  if(rootDirContent == null)
-	    rootDirContent = dirContent;
-	  else 
-	    rootDirContent.add(dirContent);
-	} else {
-	  // This is a sub dir of this MP, so we have found our match.
-	  // just return it!
-	  String vPath;
-	  if(debug) {
-	    System.err.println("Returning subdir dir: " + virtualPath + 
-			       dirContent.getVirtualPath());
-	  }
-	  return new ps2vfs.plugin.VfsDir(virtualPath + dirContent.getVirtualPath(), 
-					  dirContent.getDirContent());
-	}
-      }
-    }
-    if(rootDirContent != null) {
-      if(debug) {
-	System.err.println("Returning root dir: " + virtualPath + 
-			   rootDirContent.getVirtualPath());
-      }
-      return new ps2vfs.plugin.VfsDir(virtualPath + rootDirContent.getVirtualPath(), 
-				      rootDirContent.getDirContent());
-    }
-    return null;
-  }
-
-  private boolean removeMountPath(String virtualPath, String child) {
-    // Clean up directories as they become empty?
-    // They are added implicitly so they should probably wanish
-    // impicitly as well. Empty diretories will only clutter
-    // the VFS anyway.
-    java.util.List mounted = null;
-    boolean removed = false;
-
-    if(virtualPath != null) {
-      mounted = (java.util.List) mountTable.get(virtualPath);
-      if(mounted == null) {
-	// System.err.println("RMP: " + virtualPath + ", " + child + ", " + removed + ", (Not Found!!)");
-	return false;
-      }
-      if(child != null) {
-	removed = mounted.remove(new MountPoint(child));
-      }
-      // System.err.println("RMP: " + virtualPath + ", " + child + ", " + removed);
-
-      if(mounted.isEmpty()) {
-	// log.config("Removing empty dir: " + virtualPath);
-	removed = true;
-	mountTable.remove(virtualPath);
-	int lastSlash = virtualPath.lastIndexOf('/');
-	if(lastSlash >= 0 && 
-	   lastSlash == virtualPath.length()-1) {
-	  if(lastSlash == 0) 
-	    return removed;
-	  virtualPath = virtualPath.substring(0, lastSlash);
-	  lastSlash = virtualPath.lastIndexOf('/');
-	}
-	if(lastSlash >= 0) {
-	  removeMountPath(virtualPath.substring(0, lastSlash+1), virtualPath.substring(lastSlash+1));
-	}
-      }
-    }
-    return removed;
-  }
-
-  private java.util.List addMountPath(String virtualPath) {
-    java.util.List mounted = null;
-
-    if(virtualPath != null) {
-      int curLevel = 0;
-      String name = "";
-      String parentPath = "/";
-      
-      for(curLevel = virtualPath.indexOf('/'); 
-	  virtualPath.length() > 0; curLevel = virtualPath.indexOf('/')) {
-	if(curLevel == 0) {
-	  virtualPath = virtualPath.substring(1);
-	  continue;
-	}
-
-	if(curLevel > 0) {
-	  name = virtualPath.substring(0, curLevel);
-	  virtualPath = virtualPath.substring(curLevel + 1);
-	} else {
-	  name = virtualPath;
-	  virtualPath = "";
-	}
-	// Add name to current path.
-	mounted = (java.util.List) mountTable.get(parentPath);
-	if(mounted == null) {
-	  mounted = new java.util.Vector();
-	  // System.out.println("Adding '" + parentPath + "'");
-	  mountTable.put(parentPath, mounted);
-	}
-	MountPoint nmp = new MountPoint(name);
-	if(!mounted.contains(nmp)) {
-	  // System.out.println("Adding '" + name + "' to '"+ parentPath + "' " + mounted.size());
-	  mounted.add(nmp);
-	} else {
-	  // System.out.println("Present '" + name + "' in '" + parentPath + "' " + mounted.size());
-	}
-	parentPath = parentPath + name + "/";
-      }
-      mounted = (java.util.List) mountTable.get(parentPath);
-      if(mounted == null) {
-	// System.out.println("Adding '" + parentPath + "'");
-	mounted = new java.util.Vector();
-	mountTable.put(parentPath, mounted);
-      }
-    }
-    return mounted;
-  }
-
-
-  public String[] getChildren(String path) {
-    int curLevel;
-    String virtualPath = "/";
-    ps2vfs.plugin.VfsDir dirContent = null;
-    java.util.List mounted = null;
-    String name = "";
-    
-    for(curLevel = path.indexOf('/'); 
-	path.length() > 0; curLevel = path.indexOf('/')) {
-      if(curLevel == 0) {
-	path = path.substring(1);
-	continue;
-      }
-      String oldPath = path;
-      if(curLevel > 0) {
-	name = path.substring(0, curLevel);
-	path = path.substring(curLevel + 1);
-      } else {
-	name = path;
-	path = "";
-      }
-      
-      // Add name to current path.
-      String nvp = virtualPath + name + "/";
-      mounted = (java.util.List) mountTable.get(nvp);
-      if(mounted == null) {
-	path = oldPath;
+    for(int n = 0; n < pathElements.length; n++) {
+      if(pathElements[n] == null || pathElements[n].length() == 0)
+        continue;
+      if(debug)
+	System.out.println("getChildren2: " + pathElements[n]);
+      curMnt.getChild(new MountPoint(pathElements[n]));
+      MountPoint child = curMnt.getChild(new MountPoint(pathElements[n]));
+      if(child == null) {
+	if(debug)
+	  System.err.println("getChildren: element not found " + pathElements[n]);
+	pathNotFound = true;
 	break;
-      }
-      virtualPath = nvp;
+      } 
+      curMnt = child;
     }
+    if(pathNotFound) 
+      return null;
 
-    mounted = (java.util.List) mountTable.get(virtualPath);
+    if(curMnt != null) 
+      mounted = (java.util.List) curMnt.getChildren();
+    
     String[] strArray = null;
-    if(mounted != null && path.length() == 0) {
+    if(mounted != null) {
       java.util.ArrayList sortedMpList = new java.util.ArrayList(mounted);
       java.util.Collections.sort(sortedMpList, new MountPoint.DirComp());
       
@@ -282,6 +178,8 @@ public class VfsMountTable
 	}
       }
     }
+    if(debug)
+      System.err.println("getChildrenR: " + strArray);
     return strArray;
   }
 };

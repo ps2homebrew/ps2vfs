@@ -20,6 +20,10 @@
   </property>
   <property name="distdir" value="dist">
   </property>
+  <property name="depcache" value="depcache">
+  </property>
+  <property name="test" value="test">
+  </property>
   <property name="javadocdir" value="dist/docs/api">
   </property>
   <property name="final.name" value="ps2vfs">
@@ -35,12 +39,21 @@
   <target name="compile" description="o Compile the code" depends="get-deps">
     <mkdir dir="${classesdir}">
     </mkdir>
+    <depend srcdir="src/java"
+              destdir="${classesdir}"
+              cache="depcache"
+              closure="yes"/>
     <javac destdir="${classesdir}" deprecation="true" debug="true" optimize="false" excludes="**/package.html">
       <src>
         <pathelement location="src/java">
         </pathelement>
       </src>
-      
+      <classpath>
+        <fileset dir="${libdir}">
+          <include name="*.jar">
+          </include>
+        </fileset>
+      </classpath>
     </javac>
     <copy todir="${classesdir}">
       <fileset dir="src/java">
@@ -48,19 +61,29 @@
         </include>
         <include name="**/*.xml">
         </include>
+        <include name="**/*.jpg">
+        </include>
       </fileset>
     </copy>
   </target>
   <target name="compile-client" description="o Compile the client code" depends="compile">
     <mkdir dir="${clientclassesdir}">
     </mkdir>
+    <depend srcdir="src/client"
+            destdir="${clientclassesdir}"
+            cache="depcache"
+            closure="yes"/>
+
     <javac destdir="${clientclassesdir}" deprecation="true" debug="true" optimize="false" excludes="**/package.html">
       <src>
         <pathelement location="src/client">
         </pathelement>
       </src>
       <classpath>
-      
+        <fileset dir="${libdir}">
+          <include name="*.jar">
+          </include>
+        </fileset>
 	<pathelement path="${classesdir}">
         </pathelement>
       </classpath>
@@ -74,10 +97,15 @@
       </fileset>
     </copy>
   </target>
+
+  <target name="jars" description="o Create all jars in project" depends="jar, jar-plugins, jar-client">
+  </target>
+
   <target name="jar" description="o Create the jar" depends="compile">
     <jar jarfile="target/${final.name}.jar" excludes="**/package.html" basedir="${classesdir}">
     <manifest>
       <attribute name="Built-By" value="${user.name}"/>
+      <attribute name="Class-Path" value="./lib/commons-logging-1.0.jar"/>
       <attribute name="Main-Class" value="ps2vfs.vfs.Ps2Vfs"/>
       <section name="ps2vfs/vfs/Ps2Vfs.class">
       </section>
@@ -98,6 +126,9 @@
         <section name="ps2vfs/pluggable/streamer/">
 	   <attribute name="Main-Class" value="ps2vfs.pluggable.streamer.StreamerPlugin"/>
         </section>
+        <section name="ps2vfs/pluggable/vfsrelay/">
+	   <attribute name="Main-Class" value="ps2vfs.pluggable.vfsrelay.VfsRelayPlugin"/>
+        </section>
       </manifest>
     </jar>
   </target>
@@ -116,6 +147,10 @@
     <delete dir="${defaulttargetdir}">
     </delete>
     <delete dir="${distdir}">
+    </delete>
+    <delete dir="${depcache}">
+    </delete>
+    <delete dir="${test}">
     </delete>
   </target>
   <target name="dist" description="o Create a distribution" depends="jar, javadoc">
@@ -167,12 +202,21 @@
   <target name="compile-plugins" depends="compile">
     <mkdir dir="${pluginsclassesdir}">
     </mkdir>
+    <depend srcdir="src/plugins"
+            destdir="${pluginsclassesdir}"
+            cache="depcache"
+            closure="yes"/>
+
     <javac destdir="${pluginsclassesdir}" deprecation="true" debug="true" optimize="false" excludes="**/package.html">
       <src>
         <pathelement location="src/plugins">
         </pathelement>
       </src>
       <classpath>
+        <fileset dir="${libdir}">
+          <include name="*.jar">
+          </include>
+        </fileset>
         <pathelement path="${classesdir}">
         </pathelement>
       </classpath>
@@ -202,7 +246,8 @@
   </target>
   <target name="get-deps" unless="noget" depends="init">
 
-   
+    <get dest="${libdir}/commons-vfs-20030518103800.jar" usetimestamp="true" ignoreerrors="true" src="http://www.ibiblio.org/maven/commons-vfs/jars/commons-vfs-20030518103800.jar">
+    </get>
 
 <!--    <get dest="${libdir}/ant-1.5.jar" usetimestamp="true" ignoreerrors="true" src="http://www.ibiblio.org/maven/ant/jars/ant-1.5.jar">
     </get>

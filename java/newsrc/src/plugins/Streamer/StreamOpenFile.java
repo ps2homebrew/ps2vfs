@@ -29,9 +29,17 @@ class StreamOpenFile implements ps2vfs.plugin.VfsOpenFile
 
     try {
       iceconn = new IceConnection(url);
-      
-      log.finer("Connection returned: " + iceconn.getHeaders());
-      
+    } catch(java.io.IOException e) {
+      throw new java.io.FileNotFoundException("Opening stream \"" + urlStr + "\" failed: " + e);
+    }    
+    
+    log.finer("Connection returned: " + iceconn.getHeaders());
+    if(!iceconn.isValid() ) {
+      throw new java.io.FileNotFoundException("Opening stream \"" + urlStr + "\" failed: " +
+					      iceconn.getHeaders());
+    }
+    
+    try {
       sbuf = new SeekBuffer(chunkSize*10, chunkSize*6);
       reader = new StreamReader(iceconn, sbuf, readLimit);
       reader.setLogger(log);
@@ -41,10 +49,11 @@ class StreamOpenFile implements ps2vfs.plugin.VfsOpenFile
       sbuf.waitAvailableRead(chunkSize*1, timeout*1);
       log.finer("Data buffered. Ready for action.");
     } catch(java.io.IOException e) {
-      throw new java.io.FileNotFoundException("IOException when opening: " + urlStr);
+      throw new java.io.FileNotFoundException("Opening stream \"" + urlStr + "\" failed: " +
+					      e.toString());
     }
   }
-
+  
   public int seek(int len, int whence) 
     throws java.io.IOException  
   {

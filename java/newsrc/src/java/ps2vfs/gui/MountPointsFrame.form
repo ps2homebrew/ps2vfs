@@ -123,6 +123,13 @@
                     <Property name="actionCommand" type="java.lang.String" value="files"/>
                   </Properties>
                 </Component>
+                <Component class="javax.swing.JButton" name="jRefreshCache">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Refresh Content"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Clear the cache to refresh content"/>
+                    <Property name="actionCommand" type="java.lang.String" value="RefreshContent"/>
+                  </Properties>
+                </Component>
               </SubComponents>
             </Container>
           </SubComponents>
@@ -301,11 +308,9 @@
 
                       <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
                       <SubComponents>
-                        <Component class="javax.swing.JTextArea" name="jPluginsDescriptionText">
+                        <Component class="javax.swing.JLabel" name="jPluginsDescriptionText">
                           <Properties>
-                            <Property name="editable" type="boolean" value="false"/>
-                            <Property name="lineWrap" type="boolean" value="true"/>
-                            <Property name="wrapStyleWord" type="boolean" value="true"/>
+                            <Property name="verticalAlignment" type="int" value="1"/>
                           </Properties>
                           <Constraints>
                             <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">

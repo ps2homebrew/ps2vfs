@@ -9,7 +9,9 @@ public class StreamerPlugin implements ps2vfs.plugin.VfsPlugin
   }
 
   public String getDescription() {
-    return new String("Relays a MP3 stream to the PS2.");
+    return new String("<html><H2>ShoutCast relayer 1.1</h2>" + 
+		      "This plugin will relay shoutcast streams to the PS2Reality player and allow you to listen to you favorite internet radio station on the PS2. You would typically download a playlist from the radio station (or from a radio station directory service).<P><BR><P>" +
+		      "Known limitations: It can take a really long time to get the stream started due to a PS2 side issue. A 96k stream might take 60 seconds to start (PS2Reality wants 640KB before it starts to play).<p></hmtl>");
   }
 
   public String getProtocol() {
@@ -46,10 +48,12 @@ public class StreamerPlugin implements ps2vfs.plugin.VfsPlugin
     try {
       return new StreamOpenFile(path, log);
     } catch(Exception e) {
-      System.out.println("Exception: " + e);
-      e.printStackTrace(System.err);
-      return null;
+      String msg = e.getMessage();
+      if(msg == null)
+	msg = e.toString();
+      log.warning("Failed to open stream: " + msg);
     }
+    return null;
   }
 
   public java.util.List readDir(String path) {

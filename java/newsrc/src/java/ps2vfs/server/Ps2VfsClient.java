@@ -57,7 +57,7 @@ public class Ps2VfsClient extends Thread {
   PrintWriter screenOut = new PrintWriter(System.out, true);
 
   private Socket socket = null;
-  private String clientIP;
+  private String clientIP = null;
 
   //our data io 
   private DataInputStream in;
@@ -131,6 +131,10 @@ public class Ps2VfsClient extends Thread {
     return code;
   }
 
+  public String getClientIP() {
+    return clientIP;
+  }
+
   /*
     
     private void initVFS()
@@ -182,6 +186,7 @@ public class Ps2VfsClient extends Thread {
     }
 
   }
+
   public void Open()
   {
     //open command we read filename and try to open in read mode(default mode now)
@@ -233,9 +238,10 @@ public class Ps2VfsClient extends Thread {
       return;
     } catch (IOException e) {
       log.warning("IOException caught while opening file: " + e);
-      e.printStackTrace();
     } catch (ps2vfs.vfs.TooManyOpenFilesException e ) { //catch first exception for file not found
       log.warning("TooManyOpenFilesException: " + e);
+    } catch (Throwable e) {
+      log.warning("Open general error: " + e);
       e.printStackTrace();
     }
     
@@ -261,7 +267,7 @@ public class Ps2VfsClient extends Thread {
       returnCode=0;
     } catch(Throwable e) {
       // Should be IOError or something similar.
-      log.warning("Close non-open fd " + fdint + " from " + clientIP);
+      log.warning("Close non-open fd " + fdint + " from " + clientIP + ": " + e);
       e.printStackTrace(System.err);
     }
     try {
@@ -298,7 +304,7 @@ public class Ps2VfsClient extends Thread {
       returnCode = of.read(buffer, 0, numbytes);
 
       if(returnCode == 0) {
-	log.warning("Read returned 0. This should never happen as it markes the end of the  file in the PS2Reality world.");
+	log.warning("Read returned 0. This should never happen as it markes the end of the file in the PS2Reality world.");
       }
 
       if(returnCode < 0) {
@@ -308,7 +314,7 @@ public class Ps2VfsClient extends Thread {
 	returnCode = 0; 
       }
     } catch(Throwable e) {
-      log.warning("READ failed");
+      log.warning("READ failed: " + e);
       returnCode=0;
     }
     
@@ -383,7 +389,7 @@ public class Ps2VfsClient extends Thread {
   public void Pwd() throws IOException
   {
     int size;
-    try{
+    try {
       String dir = "/";
       if(this.code > 0) {
 	byte name[] = new byte[this.code];
@@ -447,14 +453,20 @@ public class Ps2VfsClient extends Thread {
 	log.fine("Sending PWD(-1) to " + clientIP);
       }
       this.out.flush();
+      return;
     } catch ( IOException e ) {
+      log.warning("PWD failed: " + e);
       e.printStackTrace();
-      try{
-	System.arraycopy(returnInt(-1),0,cmdPwd,0,4);
-	this.out.write(cmdPwd,0,9);
-      } catch (IOException e2 ) {
-	log.warning("Error IO processing command PWD");
-      }
+    } catch ( Throwable e) {
+      log.warning("PWD failed: " + e);
+      e.printStackTrace();
+    }
+    
+    try {
+      System.arraycopy(returnInt(-1),0,cmdPwd,0,4);
+      this.out.write(cmdPwd,0,9);
+    } catch (IOException e2 ) {
+      log.warning("Error IO processing command PWD");
     }
   }
 

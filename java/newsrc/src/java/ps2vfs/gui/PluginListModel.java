@@ -5,11 +5,11 @@ class PluginListModel extends javax.swing.AbstractListModel
   java.awt.event.ActionListener
 {
   private java.util.Vector list;
-  private javax.swing.JTextArea description;
+  private javax.swing.JLabel description;
   private javax.swing.JList jList;
   private java.awt.Frame frame;
 
-  public PluginListModel(java.util.Vector plist, javax.swing.JTextArea descr, 
+  public PluginListModel(java.util.Vector plist, javax.swing.JLabel descr, 
 			 javax.swing.JList jlist, java.awt.Frame frame) {
     this.list = plist;
     this.description = descr;

@@ -56,9 +56,11 @@ public class ImagePlugin implements ps2vfs.plugin.VfsPlugin
   }
 
   public String getDescription() {
-    return new String("Converts and resizes images to fit the PS2.");
+    return new String("<html><h2>Image converter and resizer 1.0</h2>" + 
+		      "This plugin will allow you to convert images to jpeg and resize them to fit the PS2Reality maximum resolution.<p>" + 
+		      "Currently the plugin will convert all known formats to jpeg. This will be made configurable when I get the time.<html>");
   }
-
+  
   public String getProtocol() {
     return null;
   }

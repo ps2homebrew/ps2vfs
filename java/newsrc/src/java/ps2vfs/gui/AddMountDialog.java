@@ -111,10 +111,13 @@ public class AddMountDialog extends javax.swing.JDialog {
 
         jPanel5.setBorder(new javax.swing.border.TitledBorder("Options"));
         jPanel5.setAlignmentX(0.0F);
-        jCheckBox1.setText("Add content");
+        jCheckBox1.setText("Append name");
+        jCheckBox1.setToolTipText("Append name of last path element to \"Mount at\"");
         jPanel5.add(jCheckBox1);
 
+        jCheckBox2.setSelected(true);
         jCheckBox2.setText("Include sub-directories");
+        jCheckBox2.setToolTipText("Include sub-directories in VFS.");
         jPanel5.add(jCheckBox2);
 
         jPanel3.add(jPanel5);

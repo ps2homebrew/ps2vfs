@@ -105,8 +105,9 @@ public class VfsDir
     java.util.Collections.sort(dirContent, new VfsDirEntry.DirFirstThenNameComparator());
   }
 
-  public void uniqify() {
+  public void uniqify(boolean collapse) {
     java.util.ListIterator it = dirContent.listIterator();
+    VfsDirEntry prevDirEntry = null;
     int sequenceNum = 0;
     VfsDirEntry prevEntry = null;
     String origPrevName = null;
@@ -124,7 +125,38 @@ public class VfsDir
       if(dup) {
 	if(origPrevName == null)
 	  origPrevName = entry.getVirtualName();
-	
+
+	if(collapse) {
+	  // Collapse directory entries into one, keeping the name of it
+	  // and changing the name of any files.
+	  if(entry.isDirectory()) {
+	    // System.out.println("Uniqify: entry is dir " + entry + " prevDir " + prevDirEntry);
+	    if(prevDirEntry == null) {
+	      if(prevEntry.isDirectory()) {
+		prevDirEntry = prevEntry;
+	      } else {
+		prevDirEntry = entry;
+		if(sequenceNum == 0) {
+		  sequenceNum++;
+		  int ext = origPrevName.lastIndexOf('.');
+		  if(ext > 0) 
+		    prevEntry.setVirtualName(origPrevName.substring(0, ext) 
+					     + "~" + sequenceNum + 
+					     origPrevName.substring(ext));
+		  else 
+		    prevEntry.setVirtualName(origPrevName + "~" + sequenceNum);
+
+		  sequenceNum++;
+		}
+		continue;
+	      }
+	    }
+	    prevDirEntry.addHandlerList(entry.getHandlerList());
+	    it.remove();
+	    continue;
+	  }
+	}
+
 	if(sequenceNum == 0) {
 	  sequenceNum++;
 	  int ext = origPrevName.lastIndexOf('.');
@@ -146,6 +178,7 @@ public class VfsDir
       } else {
 	origPrevName = null;
 	sequenceNum = 0;
+	prevDirEntry = null;
       }
       prevEntry = entry;
     }

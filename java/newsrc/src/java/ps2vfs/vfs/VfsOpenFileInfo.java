@@ -4,12 +4,12 @@ package ps2vfs.vfs;
 public class VfsOpenFileInfo
 {
   private int fd;
-  private long ip;
+  private String ip;
   private String info;
   private String vpath;
   private String opath;
 
-  public VfsOpenFileInfo(int inFD, long inIP) {
+  public VfsOpenFileInfo(int inFD, String inIP) {
     fd = inFD;
     ip = inIP;
   }
@@ -18,16 +18,8 @@ public class VfsOpenFileInfo
     return fd;
   }
 
-  public long getIP() {
-    return ip;
-  }
-
   public String getIPStr() {
-    return "" + 
-      ((ip >> 24) & 0xff) + "." +
-      ((ip >> 16) & 0xff) + "." +
-      ((ip >> 8) & 0xff) + "." +
-      ((ip) & 0xff);
+    return ip;
   }
   
   public void setInfo(String info) {

@@ -136,12 +136,15 @@
           <SubComponents>
             <Component class="javax.swing.JCheckBox" name="jCheckBox1">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Add content"/>
+                <Property name="text" type="java.lang.String" value="Append name"/>
+                <Property name="toolTipText" type="java.lang.String" value="Append name of last path element to &quot;Mount at&quot;"/>
               </Properties>
             </Component>
             <Component class="javax.swing.JCheckBox" name="jCheckBox2">
               <Properties>
+                <Property name="selected" type="boolean" value="true"/>
                 <Property name="text" type="java.lang.String" value="Include sub-directories"/>
+                <Property name="toolTipText" type="java.lang.String" value="Include sub-directories in VFS."/>
               </Properties>
             </Component>
           </SubComponents>

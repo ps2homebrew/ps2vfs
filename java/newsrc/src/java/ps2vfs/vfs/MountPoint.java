@@ -4,12 +4,13 @@ import ps2vfs.plugin.*;
 
 public class MountPoint 
 {
-  private String openPath;
+  private String  openPath;
   private boolean recursive;
-  private boolean explodeContent;
   private boolean virtual;
   private boolean hidden;
-  private static boolean debug = false;
+  private static boolean   debug = false;
+  private java.util.Vector children = null;
+  private MountPoint       parent = null;
 
   public static class DirComp
     implements java.util.Comparator
@@ -27,29 +28,72 @@ public class MountPoint
     }
   }
 
-  MountPoint(String iPath) {
-    openPath = iPath;
+  MountPoint(String iname) {
+    openPath =  iname;
     virtual = true;
-    explodeContent = false;
     recursive = true;
+    children = new java.util.Vector(0);
   }
   
-  MountPoint(String iPath, 
-	     boolean iExplodeContent,
+  MountPoint(String  iPath, 
 	     boolean iRecursive,
 	     boolean iHidden) {
     openPath = iPath;
     recursive = iRecursive;
-    explodeContent = iExplodeContent;
     hidden = iHidden;
     virtual = false;
+  }
+
+  public MountPoint addChild(MountPoint child) {
+    int idx = children.indexOf(child);
+    if(idx < 0) {
+      children.add(child);
+      child.setParent(this);
+    } else {
+      child = (MountPoint) children.get(idx);
+    }
+    if(debug)
+      System.out.println("MP addChild: " + child);
+    return child;
+  }
+  
+  public void removeChild(MountPoint child) {
+    children.remove(child);
+    prune();
+  }
+  
+  public java.util.List getChildren() {
+    return children;
+  }
+  
+  public MountPoint getChild(MountPoint child) {
+    int idx = children.indexOf(child);
+    if(idx >= 0) {
+      return (MountPoint) children.get(idx);
+    }
+    return null;
+  }
+  
+  public MountPoint getParent() {
+    return parent;
+  }
+
+  public MountPoint setParent(MountPoint iparent) {
+    parent = iparent;
+    return parent;
+  }
+  
+  void prune() {
+    if(children.size() == 0 && parent != null) {
+      parent.removeChild(this);
+    }
   }
 
   public String toString() {
     if(virtual) {
       return "MPv: " + openPath;
     } else {
-      return "MP : " + (recursive ? "r" : "-") + (explodeContent ? "e":"-") + (hidden?"h":"-") + " : " + openPath;
+      return "MP : " + (recursive ? "r" : "-") + (hidden?"h":"-") + " : " + openPath;
     }
   }
 
@@ -61,137 +105,66 @@ public class MountPoint
       if(virtual) {
 	eq = mp.virtual;
       } else {
-	eq = (mp.explodeContent == explodeContent) && (mp.recursive == recursive);
+	eq = (mp.recursive == recursive);
       }
     }
     return eq;
   }
 
 
-  public VfsResolvedDir resolveDir(String path) {
-    // This flag indicates that the path is a 
-    // sub-dir of this MP entry.
-
-    boolean isSubPath = true;
+  public java.util.List /*<java.plugin.VfsDirEntry>*/ resolveDir() {
     java.util.List fileVec = null;
-    VfsResolvedDir resDir = null;
-
-    if(path == null)
-      path = "";
-
-    isSubPath = path.length() > 0;
-
-    int pathSep1 = path.indexOf('/');
-    int pathSep2 = -1;
-    if(pathSep1 > 0) 
-      pathSep2 = path.indexOf('/', pathSep1+1);
-    
-    if(debug) {
-      System.out.println("Resolving: " + path + " in mp " + this);
-    }
-    
-    if(virtual) {
-      isSubPath = false;
-    } else if(!recursive && 
-	      ((explodeContent && pathSep1 > 0)  || (!explodeContent && pathSep2 > 0))) {
-      isSubPath = false;
-    }
 
     if(debug) {
-      System.out.println("Resolving: " + path + " in mp " + this + 
-			 " isSubPath: " + isSubPath + " " + pathSep1 + " " + pathSep2);
+      System.out.println("Resolving mp " + this);
     }
-      
-    String vPathPrefix = "";
-    if(isSubPath && !explodeContent) {
-      String dirName = path;
-      if(pathSep1>0)
-	dirName = path.substring(0, pathSep1);
-      
-      java.io.File oPathFile = new java.io.File(openPath);
-      if(debug) {
-	System.out.println("Checking subdir name " + dirName + 
-			   " with mp op: " + oPathFile.getName());
-      }
-
-      if(oPathFile.getName().equals(dirName)) {
-	vPathPrefix = dirName;
-	if(pathSep1 > 0) {
-	  path = path.substring(pathSep1);
-	} else {
-	  path = "";
-	}
-      } else {
-	isSubPath = false;
-      }
-    } 
     
-    // At this point we know that the remaining path can be used to 
-    // together with the open path to resolve the directory.
-    // TODO: Use Jakarta VFS to open the path.
-    // mgr.resolveFile(openPath, path);
-
-    String virtPath = "";
-    if(!isSubPath || (!recursive && path.length()>0)) {
-      virtPath = path;
-      path = "";
-    } 
-    java.io.File openPathFile = new java.io.File(openPath);
-    java.io.File dir = new java.io.File(openPath + path);
-    if(!isSubPath && (!explodeContent || virtual)) {
-      if(debug) {
-	System.out.println("Adding virtual dir: '" + openPath + path + "'");
-      }
-
-      VfsDirEntry vDirEnt = new VfsDirEntry();
-      vDirEnt.setVirtualName(dir.getName());
-      vDirEnt.setDirectory(true);
-      vDirEnt.setOpenPath(dir.getPath());
+    if(children.size() != 0) {
       fileVec = new java.util.Vector(1);
-      fileVec.add(vDirEnt);
-    } else {
-      if(debug) {
-	System.out.println("Checking " + openPath + ":" + path);
-      }
-
-      while(!dir.isDirectory() && path.length() > 0) {
-	int lps = path.lastIndexOf('/');
-	if(lps > 0) {
-	  virtPath = path.substring(lps) + virtPath;
-	  path = path.substring(0,lps);
+      java.util.Iterator it = children.iterator();
+      while(it.hasNext()) {
+        MountPoint mp = (MountPoint) it.next();
+	if(mp.isVirtual()) {
+	  if(debug)
+	    System.out.println("Adding virtual dir: '" + mp + "'");
+	  
+	  VfsDirEntry vDirEnt = new VfsDirEntry();
+	  vDirEnt.setVirtualName(mp.getOpenPath());
+	  vDirEnt.setDirectory(true);
+	  vDirEnt.setHandler(new ps2vfs.plugin.VfsHandler(mp.getOpenPath(),
+							  new MountPointHandler(mp)));  
+	  fileVec.add(vDirEnt);
 	} else {
-	  virtPath = path + virtPath;
-	  path = "";
+	  java.io.File dir = new java.io.File(mp.getOpenPath());
+	  if(dir.isDirectory()) {
+	    if(debug) {
+	      System.out.println("Reading content of dir: " +  
+				 dir.getAbsolutePath() + " mp: " + mp);
+	    }
+	    java.io.File[] files = dir.listFiles();
+	    java.util.List content = VfsDirEntry.toList(files, mp.isRecursive());
+	    if(content != null) 
+	      fileVec.addAll(content);
+	  } else {
+	    Ps2Vfs vfs = Ps2Vfs.getVfs();
+	    java.util.List content = vfs.resolveURI(mp.getOpenPath());
+	    if(content != null) 
+	      fileVec.addAll(content);
+	    /*
+	    java.util.logging.Logger.getLogger("ps2vfs").warning("Not a supported path: " + 
+								 dir.getAbsolutePath() + " mp: " + mp);
+	    */
+	  }
 	}
-	dir = new java.io.File(openPath + path);
       }
-      
-      if(dir.isDirectory()) {
-	if(debug) {
-	  System.out.println("Reading content of dir: " +  
-			     dir.getAbsolutePath() + " vp: " + virtPath);
-	}
-	java.io.File[] files = dir.listFiles();
-	fileVec = VfsDirEntry.toList(files, recursive);
-	
-      } else {
-	java.util.logging.Logger.getLogger("ps2vfs").warning("Not a supported path: " + 
-							     dir.getAbsolutePath() + 
-							     " vp: " + virtPath);
-      }
-    } 
-    
-    if(fileVec != null) {
-      // System.out.println("Returning filelist from path: " + vPathPrefix + path);  
-      resDir = new VfsResolvedDir(fileVec, vPathPrefix + path, 
-				  (vPathPrefix.length() + path.length()) == 0);
     }
-    return resDir;
+    return fileVec;
   }
-    
+
   public String  getOpenPath() { return openPath; }
-  public boolean getRecursive() { return recursive; }
-  public boolean getExplodedContent() { return explodeContent; }
+  public boolean isRecursive() { return recursive; }
   public boolean isVirtual() { return virtual; }
   public boolean isHidden() { return hidden; }
 };
+
+

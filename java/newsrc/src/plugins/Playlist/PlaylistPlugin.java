@@ -13,7 +13,9 @@ public class PlaylistPlugin implements ps2vfs.plugin.VfsPlugin
   }
 
   public String getDescription() {
-    return new String("Converts a playlist into a virtual directory.");
+    return new String("<html><h2>Playlist converter 1.0</h2>" + 
+		      "The Playlist plugin will convert playlists into virtual directories and they can thus be played on the PS2Reality player. The main reason for writing this was to be able to play playlists with ShoutCast streams. This version will only support the .pls and .m3u formats." +
+		      "</html>");
   }
 
   public String getProtocol() {
@@ -126,15 +128,16 @@ public class PlaylistPlugin implements ps2vfs.plugin.VfsPlugin
 	    protocol = entry.substring(0, protoSep);
 	  }
 	  
+	  String openPath = "";
 	  if(ref.isAbsolute()) {
-	    dirEnt.setOpenPath(ref.getAbsolutePath());
+	    openPath = ref.getAbsolutePath();
 	  } else if(protocol != null) {
-	    dirEnt.setOpenPath(entry);
+	    openPath = entry;
 	  } else {
-	    dirEnt.setOpenPath(plsFile.getAbsolutePath() + 
-			       File.separator + ref.getPath());
+	    openPath = plsFile.getAbsolutePath() + 
+	      File.separator + ref.getPath();
 	  }
-
+	  dirEnt.setHandler(new ps2vfs.plugin.VfsHandler(openPath, null));
 	  String nameStr = ref.getName();
 	  nameStr = nameStr.replaceAll(":", "_");
 	  if(protocol != null) {
@@ -181,11 +184,14 @@ public class PlaylistPlugin implements ps2vfs.plugin.VfsPlugin
 	if(entry != null) {
 	  dirEnt = new ps2vfs.plugin.VfsDirEntry();
 	  File ref = new File(entry);
+	  String openPath;
 	  if(ref.isAbsolute())
-	    dirEnt.setOpenPath(ref.getAbsolutePath());
+	    openPath = ref.getAbsolutePath();
 	  else
-	    dirEnt.setOpenPath(plsFile.getAbsolutePath() + 
-			       File.separator + ref.getPath());
+	    openPath = plsFile.getAbsolutePath() + 
+	      File.separator + ref.getPath();
+	  dirEnt.setHandler(new ps2vfs.plugin.VfsHandler(openPath, null));
+
 	  String nameStr = ref.getName();
 	  int ext = nameStr.lastIndexOf('.');
 	  if(ext > 0) {

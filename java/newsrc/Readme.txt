@@ -1,7 +1,7 @@
 License
 
 License for PS2VFS
-Copyright (c) 2004 Stig Petter Olsrød 
+Copyright (c) 2004 Stig Petter Olsrød aka Krilon
 Copyright (c) 2003,2004 Antonio José Ramos Márquez aka Bigboss
 Copyright (c) 2003 PS2Reality(Hermes, Mavy & Bigboss)
 

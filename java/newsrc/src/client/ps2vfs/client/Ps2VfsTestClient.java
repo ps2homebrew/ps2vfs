@@ -15,10 +15,19 @@ public class Ps2VfsTestClient
   private java.net.Socket clientSocket;
   private java.io.DataOutputStream out; 
   private java.io.DataInputStream in; 
+  private int sleepTime = 0;
+
+  private void setSleepTime(int st) {
+    sleepTime = st;
+  }
 
   public static void main(final String[] args) {
     try {
-      (new Ps2VfsTestClient(args[0], args[1])).go();
+      Ps2VfsTestClient client = new Ps2VfsTestClient(args[0], args[1]);
+      if(args.length == 3) {
+	client.setSleepTime(Integer.parseInt(args[2]));
+      }
+      client.go();
     }
     catch(Exception e ) {
       e.printStackTrace();
@@ -198,7 +207,9 @@ public class Ps2VfsTestClient
     }
       
     for(totalSize = 0; totalSize < size; totalSize += readSize) {
-      Thread.sleep(8000);
+      if(sleepTime != 0) 
+	Thread.sleep(sleepTime);
+
       readSize = read(fd, buffer, 0, CHUNK_SIZE);
       //System.out.println((new java.util.Date()).toString() + " Read " + readSize + " bytes");
       if(readSize <= 0)
@@ -398,7 +409,7 @@ public class Ps2VfsTestClient
 	    // This is the end marker, so we just end the printing here.
 	    break;
 	  }
-	  boolean isDir = (entries[entryOffset] == 0x02);
+	  boolean isDir = (entries[entryOffset] & 0x02) != 0;
 	  int len = ps2vfs.server.Ps2VfsClient.maxDirEntryNameLength;
 	  while(entries[entryOffset + len] == 0)
 	    len--;

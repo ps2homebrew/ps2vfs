@@ -21,7 +21,8 @@ public class MountPointsFrame extends javax.swing.JFrame
   private DirTreeListener dirListener = null;
 
   /** Creates new form MountPointsFrame */
-  public MountPointsFrame(ps2vfs.vfs.Ps2Vfs vfs) {
+  public MountPointsFrame(ps2vfs.vfs.Ps2Vfs vfs, String aboutText) {
+    // System.err.println("Init GUI.");
     this.vfs = vfs;
     initLookAndFeel();
     initComponents();
@@ -30,8 +31,17 @@ public class MountPointsFrame extends javax.swing.JFrame
     initMountPointsTable();
     initServerConfig();
     jFilesButton.addActionListener(this);
+    jRefreshCache.addActionListener(this);
     addMount.addActionListener(this);
     remMount.addActionListener(this);
+    jAboutText.setText(aboutText);    
+    // System.err.println("Init GUI.");
+  }
+  
+  public void notifyOpenFilesChanged() {
+    if(openFiles != null) {
+      openFiles.refreshModel(true);
+    }
   }
   
   private void initLookAndFeel() {
@@ -113,44 +123,32 @@ public class MountPointsFrame extends javax.swing.JFrame
     Object [][] strTab = null;
     ps2vfs.vfs.VfsMountTable mntTab = vfs.getMountTable();
     
-    java.util.Iterator it = mntTab.getIterator();
+    ps2vfs.vfs.MountTableIterator it = mntTab.iterator();
     int mntN = 0;
     while(it.hasNext()) {
-      java.util.Map.Entry ent = (java.util.Map.Entry) it.next();
-      String parent = (String) ent.getKey();
-      java.util.Iterator mntIt = ((java.util.Collection) ent.getValue()).iterator();
-      while(mntIt.hasNext()) {
-	Object obj = mntIt.next();
-	ps2vfs.vfs.MountPoint mnt = (ps2vfs.vfs.MountPoint) obj;
-	if(!mnt.isVirtual()) {
-	  mntN++;
-	}
-      }
+      it.next();
+      mntN++;
     }
     if(mntN > 0) {
       strTab = new Object[mntN][4];
       int n = 0;
-      it = mntTab.getIterator();
+      it = mntTab.iterator();
+      
       while(it.hasNext()) {
-	java.util.Map.Entry ent = (java.util.Map.Entry) it.next();
-	String parent = (String) ent.getKey();
-	java.util.Iterator mntIt = ((java.util.Collection) ent.getValue()).iterator();
-	while(mntIt.hasNext()) {
-	  Object obj = mntIt.next();
-	  ps2vfs.vfs.MountPoint mnt = (ps2vfs.vfs.MountPoint) obj;
-	  if(!mnt.isVirtual() && n < mntN) {
-	    strTab[n][0] = parent;
-	    strTab[n][1] = mnt.getOpenPath();
-	    strTab[n][2] = mnt.getExplodedContent() ? "yes" : "no";
-	    strTab[n][3] = mnt.getRecursive() ? "yes" : "no";
-	    n++;
-	  }
-	}
+	ps2vfs.vfs.MountTableEntry ent = (ps2vfs.vfs.MountTableEntry) it.next();
+
+	ps2vfs.vfs.MountPoint mnt = ent.getMountPoint();
+	String virtualPath = ent.getVirtualPath();
+	strTab[n][0] = virtualPath;
+	strTab[n][1] = mnt.getOpenPath();
+	strTab[n][2] = mnt.isRecursive() ? "yes" : "no";
+	strTab[n][3] = mnt.isHidden() ? "yes" : "no";
+	n++;
       }
     }
     jMountPointTable.setModel(new javax.swing.table.DefaultTableModel(strTab,
 								      new String [] {
-									"Virtual Path", "Open Path", "Add Content", "Include Subdirs" }) {
+									"Virtual Path", "Open Path", "Recursive", "Hidden" }) {
 	public boolean isCellEditable(int row, int column) {
 	  return false;
 	}
@@ -175,9 +173,10 @@ public class MountPointsFrame extends javax.swing.JFrame
       }
       openFiles.refreshModel(true);
       openFiles.show();
+    } else if(action.equals("RefreshContent")) {
+      vfs.clearCache();
     } else if(action.equals("AddMount")) {
       new AddMountDialog(this, true, vfs).show();
-      System.err.println("Mounting");
       initMountPointsTable();
     } else if(action.equals("RemMount")) {
       int selRow = jMountPointTable.getSelectedRow();
@@ -188,9 +187,9 @@ public class MountPointsFrame extends javax.swing.JFrame
 	ps2vfs.vfs.VfsMountTable mntTab = vfs.getMountTable();
 	String vpath = (String) tblModel.getValueAt(selRow, 0);
 	String opath = (String) tblModel.getValueAt(selRow, 1);
-	boolean add = ((String) tblModel.getValueAt(selRow, 2)).equals("yes");;
-	boolean rec = ((String) tblModel.getValueAt(selRow, 3)).equals("yes");;
-	mntTab.removeMountPoint(vpath, opath, add, rec, false);
+	boolean rec = ((String) tblModel.getValueAt(selRow, 2)).equals("yes");;
+	boolean hidden = ((String) tblModel.getValueAt(selRow, 3)).equals("yes");;
+	mntTab.removeMountPoint(vpath, opath, rec, hidden);
 	// System.err.println("Open Path: " + str);
 	vfs.persistParams();
       }
@@ -244,6 +243,7 @@ public class MountPointsFrame extends javax.swing.JFrame
         jMountViewButton = new javax.swing.JRadioButton();
         jFullViewButton = new javax.swing.JRadioButton();
         jFilesButton = new javax.swing.JButton();
+        jRefreshCache = new javax.swing.JButton();
         jConfPanel = new javax.swing.JPanel();
         jPanel7 = new javax.swing.JPanel();
         addMount = new javax.swing.JButton();
@@ -258,7 +258,7 @@ public class MountPointsFrame extends javax.swing.JFrame
         jSplitPane1 = new javax.swing.JSplitPane();
         jPluginDescriptionPanel = new javax.swing.JPanel();
         jPanel6 = new javax.swing.JPanel();
-        jPluginsDescriptionText = new javax.swing.JTextArea();
+        jPluginsDescriptionText = new javax.swing.JLabel();
         jPanel5 = new javax.swing.JPanel();
         jConfBtn = new javax.swing.JButton();
         jAboutBtn = new javax.swing.JButton();
@@ -313,6 +313,11 @@ public class MountPointsFrame extends javax.swing.JFrame
         jFilesButton.setToolTipText("Show a list of open files with information");
         jFilesButton.setActionCommand("files");
         jPanel3.add(jFilesButton);
+
+        jRefreshCache.setText("Refresh Content");
+        jRefreshCache.setToolTipText("Clear the cache to refresh content");
+        jRefreshCache.setActionCommand("RefreshContent");
+        jPanel3.add(jRefreshCache);
 
         jStatusPanel.add(jPanel3, java.awt.BorderLayout.EAST);
 
@@ -378,9 +383,7 @@ public class MountPointsFrame extends javax.swing.JFrame
         jPanel6.setLayout(new java.awt.BorderLayout());
 
         jPanel6.setBorder(new javax.swing.border.TitledBorder("Description"));
-        jPluginsDescriptionText.setEditable(false);
-        jPluginsDescriptionText.setLineWrap(true);
-        jPluginsDescriptionText.setWrapStyleWord(true);
+        jPluginsDescriptionText.setVerticalAlignment(javax.swing.SwingConstants.TOP);
         jPanel6.add(jPluginsDescriptionText, java.awt.BorderLayout.CENTER);
 
         jPluginDescriptionPanel.add(jPanel6);
@@ -463,7 +466,8 @@ public class MountPointsFrame extends javax.swing.JFrame
     private javax.swing.JPanel jPluginDescriptionPanel;
     private javax.swing.JList jPluginList;
     private javax.swing.JPanel jPluginPanel;
-    private javax.swing.JTextArea jPluginsDescriptionText;
+    private javax.swing.JLabel jPluginsDescriptionText;
+    private javax.swing.JButton jRefreshCache;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;

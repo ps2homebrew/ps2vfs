@@ -4,7 +4,7 @@ public class IceConnection
 {
   private static final boolean debug = false;
   private static final int maxLineBufferSize = 2048;
-  private boolean validConnection;
+  private boolean validConnection = false;
   private java.util.Map headerMap;
   private java.net.HttpURLConnection conn;
   private java.io.InputStream inputStream = null;
@@ -53,14 +53,18 @@ public class IceConnection
     }
 
     conn = (java.net.HttpURLConnection) url.openConnection();
-    conn.setRequestProperty("User-Agent", "PS2 VFS Stream Relayer/0.1.0-beta");
+    conn.setRequestProperty("User-Agent", "PS2VFS-PS Stream Relayer/1.0");
     conn.setRequestProperty("Connection", "close");
     conn.setInstanceFollowRedirects(true);
     try {
       conn.connect();
     } catch (java.io.IOException e) {
       headerMap = new java.util.HashMap();
-      headerMap.put("ERROR:",e.toString());
+      String message = e.getMessage();
+      if(message == null)
+	message = e.toString();
+      headerMap.put("ERROR: ", message);
+      validConnection = false;
       return;
     }
     if(debug) {
@@ -217,7 +221,11 @@ public class IceConnection
 	}
       }
     } catch(Throwable e) {
-      e.printStackTrace(System.err);
+      headerMap = new java.util.HashMap();
+      String message = e.getMessage();
+      if(message == null)
+	message = e.toString();
+      headerMap.put("ERROR: ", message);
       validConnection = false;
     }
   }

@@ -5,7 +5,7 @@ public class VfsDefaultOpenFile implements ps2vfs.plugin.VfsOpenFile
   private java.io.FileInputStream openFile;
   private String openFilePath;
   private java.nio.channels.FileChannel channel;
-  private static final boolean debug = true;
+  private static final boolean debug = false;
 
   public VfsDefaultOpenFile(String filename) 
     throws java.io.FileNotFoundException
@@ -20,20 +20,27 @@ public class VfsDefaultOpenFile implements ps2vfs.plugin.VfsOpenFile
   {
     if(openFile == null || channel == null)
       return -1;
+
+    long size = channel.size();
+    long newPos = 0;
     
     if(whence == SEEK_BEGIN) {
-      channel.position(len > 0 ? len : 0);
+      newPos = len;
     } else if(whence == SEEK_CUR) {
-      long newPos = len + channel.position();
-      if(newPos < 0)
-	newPos = 0;
-      channel.position(newPos);
+      newPos = len + channel.position();
     } else if(whence == SEEK_END) { 
-      long newPos = len + channel.size();
-      if(newPos < 0)
-	newPos = 0;
-      channel.position(newPos);
+      newPos = len + size;
     }
+    if(newPos < 0)
+      newPos = 0;
+    else if(newPos > size)
+      newPos = size;
+    
+    if(newPos > Integer.MAX_VALUE) {
+      // The PS2VFS protocol is currently limited to 2GB files.
+      newPos = Integer.MAX_VALUE;
+    }
+    channel.position(newPos);
     return (int) channel.position();
   }
   

@@ -4,6 +4,9 @@ public class Parameters {
   private final String propFileName   = "ps2vfs.props";
 
   private final String serverPort     = "ps2vfs.server.port";
+  private final String serverCollapse = "ps2vfs.server.collapse";
+  private final String serverCacheMaxSize = "ps2vfs.server.cache.maxsize";
+  private final String serverCacheMaxAge  = "ps2vfs.server.cache.maxage";
   private final String serverLogLevel = "ps2vfs.server.loglevel";
   private final String serverFileLogLevel = "ps2vfs.server.file.loglevel";
 
@@ -35,6 +38,15 @@ public class Parameters {
     }
   }
   
+  public boolean getCollapseDirs() {
+    String str = props_.getProperty(serverCollapse);
+    boolean collapse = true;
+    if(str != null) {
+      collapse = Boolean.valueOf(str).booleanValue();
+    }
+    return collapse;
+  }
+
   public int getPort() {
     String numEntStr = props_.getProperty(serverPort);
     int numEnt = 0;
@@ -53,6 +65,40 @@ public class Parameters {
 
   public void setPort(int port) {
     props_.setProperty(serverPort, new String(""+port));
+  }
+
+  public int getCacheMaxSize() {
+    String numEntStr = props_.getProperty(serverCacheMaxSize);
+    int numEnt = 0;
+    if(numEntStr != null) {
+      try {
+	numEnt = Integer.parseInt(numEntStr);
+      } catch(NumberFormatException e) {
+	System.out.println("Failed to read '" + serverCacheMaxSize + "' number from " + numEntStr);
+	numEnt = 0;
+      }
+    }
+    if(numEnt <= 0) 
+      numEnt = 100;
+    return numEnt;
+  }
+
+  public long getCacheMaxAge() {
+    String numEntStr = props_.getProperty(serverCacheMaxAge);
+    long numEnt = 0;
+    if(numEntStr != null) {
+      try {
+	numEnt = Long.parseLong(numEntStr);
+      } catch(NumberFormatException e) {
+	System.out.println("Failed to read '" + serverCacheMaxAge + "' number from " + numEntStr);
+	numEnt = 0;
+      }
+    }
+    if(numEnt <= 0) 
+      numEnt = 10*60*1000; // 10 minutes as default maxAge!
+    else 
+      numEnt *= 60*1000;
+    return numEnt;
   }
 
   public String getServerLogLevel() {
@@ -101,29 +147,22 @@ public class Parameters {
 
     clearMntTable();
 
-    java.util.Iterator it = mntTab.getIterator();
+    MountTableIterator it = mntTab.iterator();
     int mntN = 0;
     while(it.hasNext()) {
-      java.util.Map.Entry ent = (java.util.Map.Entry) it.next();
-      String parent = (String) ent.getKey();
-      java.util.Iterator mntIt = ((java.util.Collection) ent.getValue()).iterator();
-      while(mntIt.hasNext()) {
-	Object obj = mntIt.next();
-	MountPoint mnt = (MountPoint) obj;
-	if(!mnt.isVirtual()) {
-	  // System.out.println("Mnt: " + parent + " " + mnt);	
-	  mntN++;
-	  String propNamePre = mntPointPrefix + mntN;
-	  props_.setProperty(propNamePre + mntPointVPath, parent);
-	  props_.setProperty(propNamePre + mntPointPPath, mnt.getOpenPath());
-	  props_.setProperty(propNamePre + mntPointAttrs, 
-			     new String((mnt.getRecursive()?"r":"") +
-					(mnt.getExplodedContent()?"e":"") + 
-					(mnt.isHidden()?"h":"")));
-	}
-      }
-      props_.setProperty(mntPointNum, new String(""+mntN));
+      MountTableEntry ent = (MountTableEntry) it.next();
+      mntN++;
+      MountPoint mnt = ent.getMountPoint();
+      String virtualPath = ent.getVirtualPath();
+      String propNamePre = mntPointPrefix + mntN;
+
+      props_.setProperty(propNamePre + mntPointVPath, virtualPath);
+      props_.setProperty(propNamePre + mntPointPPath, mnt.getOpenPath());
+      props_.setProperty(propNamePre + mntPointAttrs, 
+			 new String((mnt.isRecursive()?"r":"") +
+				    (mnt.isHidden()?"h":"")));
     }
+    props_.setProperty(mntPointNum, new String(""+mntN));
   }
 
   public VfsMountTable getMntTable() {
@@ -149,14 +188,12 @@ public class Parameters {
 	continue; // Not valid
 
       boolean recursive = false;
-      boolean expand = false;
       boolean hidden = false;
 
       recursive = attrs.indexOf('r') >= 0;
-      expand = attrs.indexOf('e') >= 0;
       hidden = attrs.indexOf('h') >= 0;
       
-      mountTable.addMountPoint(vpath, ppath, expand, recursive, hidden);
+      mountTable.addMountPoint(vpath, ppath, false, recursive, hidden);
     }
     /*
     mountTable.addMountPoint("/test1", "testdir", false, false, false);

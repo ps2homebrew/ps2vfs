@@ -27,12 +27,11 @@ public class VfsDirEntry
   }
   
   public VfsDirEntry() {
-    handler = null;
+    handlers = new java.util.Vector(0);
     isVirtual = false;
     isDir = false;
     isHidden = false;
     virtualName = null;
-    openPath = null;
   }
 
   /**
@@ -58,38 +57,95 @@ public class VfsDirEntry
    * displayed on the PS2.
    */
   public String  getVirtualName() {
-    if(virtualName == null && openPath != null) {
-      return new java.io.File(openPath).getName();
+    if(virtualName == null) {
+      String openPath = getOpenPath();
+      if(openPath != null) {
+	return new java.io.File(openPath).getName();
+      }
     } else {
       return virtualName; 
     }
+    return "noname";
   }
 
   /**
    * Returns the path that should be used to open the 
    * file on the host.
    */
-  public String  getOpenPath() { return openPath; }
+  public String  getOpenPath() { 
+    if(handlers.size() != 0) {
+      VfsHandler hndlr = (VfsHandler) handlers.get(0);
+      if(hndlr != null) 
+	return hndlr.getOpenPath();
+    }
+    return null;
+  }
 
   /**
    * Returns the plugin to use for accessing this entry
    */
   public VfsPlugin getHandler() {
-    return handler;
+    if(handlers.size() != 0) {
+      VfsHandler hndlr = (VfsHandler) handlers.get(0);
+      if(hndlr != null) 
+	return hndlr.getHandler();
+    }
+    return null;
+  }
+
+  /**
+   * Returns the plugins to use for accessing this entry
+   * Multiples are only allowed for directories.
+   */
+  public java.util.List /*<VfsHandler>*/ getHandlerList() {
+    return handlers;
   }
 
 
   /***********************************************/
+  public void setOpenPath(String op) {
+    if(!isDirectory()) {
+      handlers.clear();
+    }
+    handlers.add(new VfsHandler(op, null));
+  }
+
+  public void setHandler(VfsHandler phandler) { 
+    if(isDirectory()) {
+      handlers.add(phandler);
+    } else {
+      handlers.clear();
+      handlers.add(phandler);
+    }
+  }
+
+  public void addHandlerList(java.util.List /*<VfsHandler>*/ ihandlers) { 
+    if(isDirectory()) {
+      handlers.addAll(ihandlers);
+    } else {
+      System.err.println("Unable to set handlers in non-directory (" + this + ", " + ihandlers + ")");
+    }
+  }
+
   public void setHandler(VfsPlugin phandler) { 
-    handler = phandler;
+    if(isDirectory()) {
+      System.err.println("Unable to set handler in directory (" + phandler + ", " + this + ")");
+    } else {
+      VfsHandler vh = (VfsHandler) handlers.get(0);
+      if(vh.getHandler() == null) {
+	vh.setHandler(phandler);
+      } else {
+	System.err.println("Handler is set (" + vh + ", " + this + ")");
+      }
+    }
+  }
+
+  public void setHandler(String op) {
+    setOpenPath(op);
   }
 
   public void setVirtualName(String name) {
     virtualName = name;
-  }
-
-  public void setOpenPath(String path) {
-    openPath = path;
   }
 
   public void setDirectory(boolean s) {
@@ -114,6 +170,11 @@ public class VfsDirEntry
       return getVirtualName();
   }
 
+  public String toString() {
+    return "VfsDirEntry: " + getVirtualPath() + " - " + (isDirectory() ? "d" : " ") + " - " +
+      handlers.size();
+  }
+
  /*********************************************/
 
   public static java.util.List toList(java.io.File[] dirContent, boolean includeSubDirs) {
@@ -125,7 +186,7 @@ public class VfsDirEntry
 	continue;
 
       VfsDirEntry dirEnt = new VfsDirEntry();
-      dirEnt.setOpenPath(dirContent[n].getAbsolutePath());
+      dirEnt.setHandler(new VfsHandler(dirContent[n].getAbsolutePath(), null));
       dirEnt.setDirectory(dirContent[n].isDirectory());
       dirEntries.add(dirEnt);
     }
@@ -133,11 +194,11 @@ public class VfsDirEntry
     return dirEntries;
   }
 
+  
  /*********************************************/
-  private String openPath;
   private String virtualName;
   private String virtualPath;
-  private VfsPlugin handler;
+  private java.util.List /*<VfsHandler>*/ handlers;
 
   private boolean isVirtual;
   private boolean isDir;
