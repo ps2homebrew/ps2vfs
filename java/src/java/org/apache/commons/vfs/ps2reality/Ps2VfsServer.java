@@ -28,7 +28,9 @@ public class Ps2VfsServer extends Thread
     	private static int numfilesopened=0;
    private static Hashtable filesopened;
    private static String serverIP;
-   private static boolean consoleMode;
+   private static boolean first=true;
+      private static boolean consoleMode;
+
    private static void loadProperties(Properties prop)
 	{
 		try
@@ -166,7 +168,7 @@ public class Ps2VfsServer extends Thread
     }
 	public static void main(String[] args) throws IOException {
 			Thread tempThread;
-	
+	        Ps2RealityControlCenter myGui;
 			Ps2VfsClientThread ps2Client;
 	        ServerSocket serverSocket = null;
 			boolean listening = true;
@@ -189,7 +191,7 @@ public class Ps2VfsServer extends Thread
 			consoleMode=getConsoleMode(props);
 			directorio=getDir(props);
 			serverIP=getIP(props);
-			
+			myGui = new Ps2RealityControlCenter(directorio);
 			
 			
 			try{
@@ -206,6 +208,7 @@ public class Ps2VfsServer extends Thread
 				screenOut.println("Log Level 1 set");
 
 				initVFS(directorio);
+				
 				while (listening){
 				if(consoleMode)
 				{
@@ -213,14 +216,20 @@ public class Ps2VfsServer extends Thread
 				}
 				else
 				{
-					Ps2RealityControlCenter myGui = new Ps2RealityControlCenter(directorio);
-				 if (myGui.initControlCenter("PS2Reality Mediaplayer Control Center")) {
-  					myGui.setVisible(true);
+					if(first)
+					{
+						 
+						 if (myGui.initControlCenter("PS2Reality Mediaplayer Control Center")) 
+						 {
+  							myGui.setVisible(true);
        
-				} else {
-      				javax.swing.JOptionPane.showMessageDialog(null,"Failed to initialize interface: " );
-				}
-				  
+						 } 
+						 else 
+						 {
+      						javax.swing.JOptionPane.showMessageDialog(null,"Failed to initialize interface: " );
+						 }
+						 first=false;
+					}
 					ps2Client = new Ps2VfsClientThread(ssc.accept(),myGui.getPath(),mgr,filesopened,myGui.getLog());
 				}
 				//counter++;
