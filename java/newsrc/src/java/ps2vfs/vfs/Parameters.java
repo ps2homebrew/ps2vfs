@@ -16,6 +16,9 @@ public class Parameters {
   private final String mntPointPPath  = ".physicalPath";
   private final String mntPointAttrs  = ".attributes";
 
+  private final String serverDebugVfs = "ps2vfs.server.debug.vfs";
+  private final String serverDebugMnt = "ps2vfs.server.debug.mount";
+  
   public Parameters() { props_ = new java.util.Properties(); }
 
   public void loadParameters() {
@@ -45,6 +48,24 @@ public class Parameters {
       collapse = Boolean.valueOf(str).booleanValue();
     }
     return collapse;
+  }
+
+  public boolean getDebugVfs() {
+    String str = props_.getProperty(serverDebugVfs);
+    boolean val = false;
+    if(str != null) {
+      val = Boolean.valueOf(str).booleanValue();
+    }
+    return val;
+  }
+
+  public boolean getDebugMnt() {
+    String str = props_.getProperty(serverDebugMnt);
+    boolean val = false;
+    if(str != null) {
+      val = Boolean.valueOf(str).booleanValue();
+    }
+    return val;
   }
 
   public int getPort() {

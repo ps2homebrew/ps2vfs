@@ -12,6 +12,10 @@ public class VfsMountTable
   private MountPoint rootMP = null;
   private Ps2Vfs     vfs = null;
 
+  public static void setDebug(boolean val) {
+    debug = val;
+  }
+
   VfsMountTable() {
     mountTable = new java.util.HashMap(); 
     rootMP = new MountPoint("/");

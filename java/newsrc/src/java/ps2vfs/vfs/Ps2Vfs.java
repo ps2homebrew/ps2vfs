@@ -49,8 +49,13 @@ public class Ps2Vfs
   // Change-log
   "<h3>ChangeLog</h3>" + 
   "<UL>" + 
-  
-  "<LI>Krilon 2004-07-02<UL>" + 
+
+  "<LI>Krilon 2004-07-07<UL>" + 
+  "<LI>Released V1.1.1</LI>" +
+  "<LI>Fixed seek problem (guard against seeks beyond start and end of file).<BR>" + 
+  "Thanks to VCi15 for reporting this bug." +
+
+  "</UL><LI>Krilon 2004-07-02<UL>" + 
   "<LI>Major rewrite of the mount table. This rewrite should resolve all known limitations of <BR>" + 
   "the previous version." + 
   "<LI>Allow collapsing of duplicate directories instead of enumerating them. This feature can be <BR>" + 
@@ -612,8 +617,12 @@ public class Ps2Vfs
 
     while(true) {
       try {
-	port = getParameters().getPort();
-	collapseDirs = getParameters().getCollapseDirs();
+	Parameters params = getParameters();
+	
+	port = params.getPort();
+	collapseDirs = params.getCollapseDirs();
+	debug = params.getDebugVfs();
+	
 	ps2vfs.server.Ps2VfsServer server = new ps2vfs.server.Ps2VfsServer(port,
 									   this, log);
 	server.start();
@@ -769,7 +778,9 @@ public class Ps2Vfs
   }
 
   private void initMountTable() {
-    mountTable = getParameters().getMntTable();
+    Parameters params = getParameters();
+    VfsMountTable.setDebug(params.getDebugMnt());
+    mountTable = params.getMntTable();
   }
 
   public VfsMountTable getMountTable() {
