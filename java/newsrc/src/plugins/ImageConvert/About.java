@@ -35,7 +35,7 @@ public class About extends javax.swing.JDialog {
 			"pictures of my son. <BR> " + 
 			"Thanks to him (just 3 months now) and to my wife for " + 
 			"their patiance." +
-			"<p>");
+			"<p><br><br><br>");
         setLocationRelativeTo(parent);
 	pack();
     }
