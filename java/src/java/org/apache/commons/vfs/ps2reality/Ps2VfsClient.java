@@ -12,7 +12,7 @@ import org.apache.commons.vfs.VFS;
 import org.apache.commons.vfs.Selectors;
 
 
-class Ps2VfsClientThread extends Thread {
+class Ps2VfsClient extends Thread {
 
     //Strings for our commands
 	public String HELLO="HELLO";
@@ -62,7 +62,7 @@ class Ps2VfsClientThread extends Thread {
 	public boolean done=false;
 	
 	public Ps2VfsClientThread(Socket socket){
-		super("Ps2VfsClientThread");
+		super("Ps2VfsClient");
 		this.socket = socket;
 		
 		initVFS(); //for command pwd and dir
