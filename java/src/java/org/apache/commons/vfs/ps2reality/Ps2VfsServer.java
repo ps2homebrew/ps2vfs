@@ -14,7 +14,7 @@ public class Ps2VfsServer extends Thread
 	public static void main(String[] args) throws IOException {
 			Thread tempThread;
 	
-			Ps2VfsClientThread ps2Client;
+			Ps2VfsClient ps2Client;
 	        ServerSocket serverSocket = null;
 			boolean listening = true;
 			int port=6969;
@@ -32,7 +32,7 @@ public class Ps2VfsServer extends Thread
 				screenOut.println("Server listening in port "+port);
 				while (listening){
 				
-				ps2Client = new Ps2VfsClientThread(serverSocket.accept());
+				ps2Client = new Ps2VfsClient(serverSocket.accept());
 				//counter++;
 				clientList.add(ps2Client);
 				tempThread = new Thread(ps2Client);
